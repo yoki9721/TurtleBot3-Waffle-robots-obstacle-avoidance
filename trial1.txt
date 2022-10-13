@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+import rospy # Python library for ROS
+from sensor_msgs.msg import LaserScan # LaserScan type message is defined in sensor_msgs
+from geometry_msgs.msg import Twist #
+import roslaunch
+
+class explore():
+
+    def callback(self,dt):
+        
+        print(f"Range data at 0 deg: {dt.ranges[0]}")
+        print(f"Range data at 15 deg: {dt.ranges[25]}")
+        print(f"Range data at 345 deg: {dt.ranges[335]}")
+        
+        thr1 = 0.8 # Laser scan range threshold - default 0.8
+        thr2 = 0.9
+        if dt.ranges[0]>thr1 and dt.ranges[15]>thr2 and dt.ranges[345]>thr2: 
+            self.move.linear.x = 0.26 # go forward (linear velocity)
+            self.move.angular.z = 0.0 # do not rotate (angular velocity)
+        else:
+            self.move.linear.x = 0.05 # coming to a stop
+            self.move.angular.z = 0.0 # rotate counter-clockwise
+            self.pub.publish(self.move)
+            self.move.linear.x = 0.0 # stop
+            self.move.angular.z = 0.5 # rotate counter-clockwise
+            if dt.ranges[359]>thr1 and dt.ranges[25]>thr2 and dt.ranges[335]>thr2:
+                self.move.linear.x = 0.25
+                self.move.angular.z = 0.0
+        self.pub.publish(self.move) # publish the move object
+        
+        
+    
+    def map_generate(self):
+        package = 'map_server'
+        type = 'map_saver'
+        node = roslaunch.core.Node(package, type, args="-f $(find acs6121_team19)/maps/explore_map")
+        launch = roslaunch.scriptapi.ROSLaunch()
+        launch.start()
+        launch.launch(node)
+    
+    def __init__(self):
+        
+        rospy.init_node('obstacle_avoidance_node') # Initializes a node
+        self.pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)  
+        self.sub = rospy.Subscriber("/scan", LaserScan, self.callback) 
+
+        self.ctrl_c = False
+        rospy.on_shutdown(self.shutdownhook) 
+        
+    def main_loop(self):
+        while not self.ctrl_c:
+            self.map_generate()
+            self.move = Twist() # Creates a Twist message type object        
+    
+    def shutdownhook(self):
+        self.ctrl_c = True
+        self.move.linear.x = 0.0
+        self.move.angular.z = 0.0
+        self.pub.publish(self.move)        
+
+if __name__ == '__main__':
+    explore_instance = explore()
+    try:
+        explore_instance.main_loop()
+    except rospy.ROSInterruptException:
+        pass
+    
