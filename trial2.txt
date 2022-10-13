@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+from numpy import average
+import rospy # Python library for ROS
+from sensor_msgs.msg import LaserScan # LaserScan type message is defined in sensor_msgs
+from geometry_msgs.msg import Twist #
+
+
+def callback(dt):
+    
+    print(f"Range data at 0 deg: {dt.ranges[0:15]}")
+    print(f"Range data at 65 deg: {dt.ranges[345:359]}")
+    print(f"Range data at 295 deg: {dt.ranges[295]}")
+    
+    thr1 = 0.4 # Laser scan range threshold - default 0.8
+    thr2 = 0.45
+    thr3 = 0.3
+    # if max(dt.ranges[0:1])>thr1 and max(dt.ranges[358:359])>thr1: # and max(dt.ranges[1:40])>thr2: 
+    #     move.linear.x = 0.5 # go forward (linear velocity)
+    #     move.angular.z = 0.0 # do not rotate (angular velocity)
+    #     if max(dt.ranges[2:60])<thr2:
+    #         move.linear.x = -0.02 # stop (linear velocity)
+    #         move.angular.z = 0.25 # rotate counter-clockwise
+    #     elif max(dt.ranges[300:358]) <thr2:
+    #         move.linear.x = -0.02 # stop (linear velocity)
+    #         move.angular.z = -0.25 # rotate counter-clockwise
+
+    # else:
+    #     move.linear.x = 0.0 # stop
+    #     move.angular.z = 0.25 # rotate counter-clockwise
+    #     #if dt.ranges[0]>thr1 and dt.ranges[65]>thr2 and dt.ranges[295]>thr2:
+    #         #move.linear.x = 0.5
+    #         #move.angular.z = 0.0
+    # pub.publish(move) # publish the move object
+    if min(dt.ranges[0:50])<thr1:
+        move.linear.x = 0.01 # go forward (linear velocity)
+        move.angular.z = -0.25 # do not rotate (angular velocity)
+    elif min(dt.ranges[310:359])<thr1:
+        move.linear.x = 0.01 # go forward (linear velocity)
+        move.angular.z = 0.25 # do not rotate (angular velocity)
+    elif min(dt.ranges[0:50]+dt.ranges[310:359]) <thr2:
+         if min(dt.ranges[150:210])> thr3:
+            move.linear.x = -0.1
+       
+
+    # elif min(dt.ranges[210:270])<thr1:
+    #     move.linear.x = 0.0 # go forward (linear velocity)
+    #     move.angular.z = 0.5 # do not rotate (angular velocity)
+    # elif min(dt.ranges[270:330])<thr1:
+    #     move.linear.x = 0.0 # go forward (linear velocity)
+    #     move.angular.z = -0.55 # do not rotate (angular velocity)
+    else:
+        move.linear.x = 0.25
+    
+    pub.publish(move) # publish the move object
+move = Twist() # Creates a Twist message type object
+rospy.init_node('obstacle_avoidance_node') # Initializes a node
+pub = rospy.Publisher("/cmd_vel", Twist, queue_size=10)  
+sub = rospy.Subscriber("/scan", LaserScan, callback) 
+rospy.spin() # Loops infinitely until someone stops the program execution
